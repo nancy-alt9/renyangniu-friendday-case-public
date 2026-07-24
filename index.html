@@ -1036,5 +1036,96 @@
 
 </div>
 
+<!-- ========== 编辑模式：按 E 键切换 ========== -->
+<div id="editToolbar" style="position:fixed;top:14px;right:14px;z-index:9999;background:rgba(26,79,160,0.95);color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.2);font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;line-height:1.6;display:flex;align-items:center;gap:12px;">
+  <div>
+    <div style="font-weight:700;font-size:13px;">📝 编辑模式：<span id="editStatus" style="color:#ffd54f;">已关闭</span></div>
+    <div style="font-size:10.5px;opacity:0.85;">按 <kbd style="background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:3px;font-family:monospace;">E</kbd> 切换 · 按 <kbd style="background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:3px;font-family:monospace;">S</kbd> 保存下载</div>
+  </div>
+  <button id="btnToggle" style="background:#fff;color:#1a4fa0;border:none;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">开启编辑</button>
+  <button id="btnSave" style="background:#e8b86a;color:#1a4fa0;border:none;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">💾 保存</button>
+  <button id="btnHide" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.4);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;" title="隐藏工具条">×</button>
+</div>
+
+<script>
+(function(){
+  var toolbar = document.getElementById('editToolbar');
+  var statusEl = document.getElementById('editStatus');
+  var btnToggle = document.getElementById('btnToggle');
+  var btnSave = document.getElementById('btnSave');
+  var btnHide = document.getElementById('btnHide');
+  var editing = false;
+
+  function setEdit(on){
+    editing = on;
+    document.designMode = on ? 'on' : 'off';
+    if(on){
+      statusEl.textContent = '已开启';
+      statusEl.style.color = '#8bffb0';
+      btnToggle.textContent = '关闭编辑';
+      document.body.style.outline = '2px dashed #e8b86a';
+      document.body.style.outlineOffset = '-2px';
+    } else {
+      statusEl.textContent = '已关闭';
+      statusEl.style.color = '#ffd54f';
+      btnToggle.textContent = '开启编辑';
+      document.body.style.outline = 'none';
+    }
+  }
+
+  function saveHtml(){
+    var wasEditing = editing;
+    if(wasEditing) setEdit(false); // 保存前关闭编辑，避免designMode影响输出
+    // 深拷贝body，移除编辑工具条本身
+    var clone = document.documentElement.cloneNode(true);
+    var tb = clone.querySelector('#editToolbar');
+    if(tb) tb.remove();
+    // 移除工具条对应的 script（本段脚本）
+    var scripts = clone.querySelectorAll('script');
+    scripts.forEach(function(s){
+      if(s.textContent.indexOf('editToolbar') > -1) s.remove();
+    });
+    var html = '<!DOCTYPE html>\n' + clone.outerHTML;
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    var ts = new Date();
+    var pad = function(n){return n<10?'0'+n:n};
+    a.download = '认养一头牛_对外版_' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '_' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if(wasEditing) setEdit(true);
+    // 提示
+    var tip = document.createElement('div');
+    tip.textContent = '✅ 已保存到"下载"文件夹';
+    tip.style.cssText = 'position:fixed;top:80px;right:14px;z-index:10000;background:#2d8e5e;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+    document.body.appendChild(tip);
+    setTimeout(function(){tip.remove();},2200);
+  }
+
+  btnToggle.addEventListener('click', function(){ setEdit(!editing); });
+  btnSave.addEventListener('click', saveHtml);
+  btnHide.addEventListener('click', function(){ toolbar.style.display='none'; });
+
+  document.addEventListener('keydown', function(e){
+    // 编辑输入框内不响应快捷键
+    var t = e.target;
+    var tag = (t.tagName||'').toLowerCase();
+    if(tag==='input'||tag==='textarea'||t.isContentEditable){
+      // 编辑模式下需要允许 E/S 输入，只有 Ctrl/Meta+E/S 时才响应
+      if(!(e.ctrlKey||e.metaKey)) return;
+    }
+    if(e.key==='e'||e.key==='E'){ e.preventDefault(); setEdit(!editing); }
+    else if(e.key==='s'||e.key==='S'){
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); saveHtml(); }
+      else if(!editing){ e.preventDefault(); saveHtml(); }
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
